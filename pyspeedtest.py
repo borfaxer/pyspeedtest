@@ -33,6 +33,7 @@ __description__ = 'Test your bandwidth speed using Speedtest.net servers.'
 
 __supported_formats__ = ('default', 'json', 'xml')
 
+BAD_LATENCY = 999999
 
 class SpeedTest(object):
 
@@ -160,7 +161,12 @@ class SpeedTest(object):
         if not server:
             server = self.host
 
-        connection = self.connect(server)
+        try:
+            connection = self.connect(server)
+        except Exception as e:
+            LOG.error('Exception connecting during ping:')
+            LOG.error('\t%s', e)
+            return BAD_LATENCY
         times = []
         worst = 0
         for _ in range(5):
@@ -183,7 +189,7 @@ class SpeedTest(object):
         return total_ms
 
     def chooseserver(self):
-        connection = self.connect('www.speedtest.net')
+        connection = self.connect('c.speedtest.net')
         now = int(time() * 1000)
         # really contribute to speedtest.net OS statistics
         # maybe they won't block us again...
@@ -219,7 +225,12 @@ class SpeedTest(object):
             s_lon = float(server[2])
             distance = sqrt(pow(s_lat - my_lat, 2) + pow(s_lon - my_lon, 2))
             bisect.insort_left(sorted_server_list, (distance, server[0]))
-        best_server = (999999, '')
+        best_server = (BAD_LATENCY, '')
+        LOG.info('%d potential servers', len(sorted_server_list))
+        LOG.debug('The closest 10 are:')
+        for server in sorted_server_list[:10]:
+            LOG.debug('\t%s', server[1])
+        LOG.info('Checking closest 10 for best ping response time...')
         for server in sorted_server_list[:10]:
             LOG.debug(server[1])
             match = re.search(
@@ -232,7 +243,7 @@ class SpeedTest(object):
                 best_server = (latency, server_host)
         if not best_server[1]:
             raise Exception('Cannot find a test server')
-        LOG.debug('Best server: %s', best_server[1])
+        LOG.info('Best server: %s', best_server[1])
         return best_server[1]
 
 

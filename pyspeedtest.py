@@ -5,6 +5,7 @@ from __future__ import print_function
 
 import argparse
 import bisect
+import csv
 import itertools
 import logging
 import random
@@ -34,6 +35,8 @@ __description__ = 'Test your bandwidth speed using Speedtest.net servers.'
 __supported_formats__ = ('default', 'json', 'xml')
 
 BAD_LATENCY = 999999
+SPEEDTEST_SERVER = 'c.speedtest.net'
+SERVER_LIST_CACHE = 'server_list.csv'
 
 class SpeedTest(object):
 
@@ -189,7 +192,7 @@ class SpeedTest(object):
         return total_ms
 
     def chooseserver(self):
-        connection = self.connect('c.speedtest.net')
+        connection = self.connect(SPEEDTEST_SERVER)
         now = int(time() * 1000)
         # really contribute to speedtest.net OS statistics
         # maybe they won't block us again...
@@ -215,8 +218,24 @@ class SpeedTest(object):
             'GET', '/speedtest-servers.php?x=%d' % now, None, extra_headers)
         response = connection.getresponse()
         reply = response.read().decode('utf-8')
+        # LOG.info('Reply:\n\n%s\n\n', reply)
         server_list = re.findall(
             r'<server url="([^"]*)" lat="([^"]*)" lon="([^"]*)"', reply)
+        LOG.info('Got %d servers from %s', len(server_list), SPEEDTEST_SERVER)
+        if len(server_list) > 0:
+            # Write the list out so we can use it if we have to
+            LOG.info('Writing out server list of %d servers', len(server_list))
+            with open(SERVER_LIST_CACHE, 'w') as csvfile:
+                csv_writer = csv.writer(csvfile)
+                for server in server_list:
+                    csv_writer.writerow(server)
+        else:
+            # Read the list that we saved so we have some to use
+            LOG.info('Got %d servers from %s, using cached list in %s', len(server_list), SPEEDTEST_SERVER, SERVER_LIST_CACHE)
+            with open(SERVER_LIST_CACHE, 'r') as csvfile:
+                csv_reader = csv.reader(csvfile)
+                for row in csv_reader:
+                    server_list.append(row)
         my_lat = float(location[1])
         my_lon = float(location[2])
         sorted_server_list = []

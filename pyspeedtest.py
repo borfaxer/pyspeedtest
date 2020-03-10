@@ -228,7 +228,10 @@ class SpeedTest(object):
             with open(SERVER_LIST_CACHE, 'w') as csvfile:
                 csv_writer = csv.writer(csvfile)
                 for server in server_list:
-                    csv_writer.writerow(server)
+                    try:
+                        csv_writer.writerow(server)
+                    except:
+                        LOG.error('Could not write out URL \'%s\'', server[0].encode('utf-8'))
         else:
             # Read the list that we saved so we have some to use
             LOG.info('Got %d servers from %s, using cached list in %s', len(server_list), SPEEDTEST_SERVER, SERVER_LIST_CACHE)

@@ -126,6 +126,7 @@ class SpeedTest(object):
         })
         response = connection.getresponse()
         reply = response.read().decode('utf-8')
+        LOG.debug('Upload reply to %s is: %s', url, reply)
         self_thread = currentThread()
         self_thread.uploaded = int(reply.split('=')[1])
 
@@ -150,9 +151,10 @@ class SpeedTest(object):
                 threads.append(thread)
             for thread in threads:
                 thread.join()
+                uploaded = getattr(thread, 'uploaded', 0)
                 LOG.debug('Run %d for %d bytes finished',
-                          thread.run_number, thread.uploaded)
-                total_uploaded += thread.uploaded
+                          thread.run_number, uploaded)
+                total_uploaded += uploaded
         total_ms = (time() - total_start_time) * 1000
         for connection in connections:
             connection.close()
